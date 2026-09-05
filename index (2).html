@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Demo AFS — prototipo de gestión de requerimientos, caja, valija e indicadores.">
+<meta property="og:title" content="Demo AFS">
+<meta property="og:description" content="Prototipo funcional de gestión de requerimientos, recaudación, valija e indicadores. Datos ficticios.">
+<meta property="og:type" content="website">
+<title>Demo AFS</title>
+<style>
+:root{
+  --paper:#EEF1F5; --surface:#FFFFFF; --ink:#10243B; --ink-soft:#4B5D73; --ink-faint:#7C8AA0;
+  --line:#D2DAE4; --line-soft:#E6EBF1;
+  --ok:#0B6B5B; --ok-bg:#E4F0ED; --warn:#996016; --warn-bg:#FBF0DD;
+  --alert:#9E2B1C; --alert-bg:#FAE7E4; --rail:#0E2136;
+  --mono:ui-monospace,"Cascadia Mono","Consolas","SFMono-Regular",monospace;
+  --sans:"Segoe UI",ui-sans-serif,system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:14px;line-height:1.45;display:flex}
+button{font:inherit;color:inherit}
+input,select,textarea{font:inherit;color:inherit}
+
+.rail{width:224px;flex:0 0 224px;background:var(--rail);color:#C6D2E0;display:flex;flex-direction:column;height:100vh;position:sticky;top:0}
+.rail-head{padding:18px 18px 14px;border-bottom:1px solid rgba(255,255,255,.09)}
+.rail-head h1{font-size:16px;margin:0;color:#fff;font-weight:600;letter-spacing:.3px}
+.rail nav{padding:10px 0;flex:1;overflow:auto}
+.rail nav button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;padding:9px 18px;text-align:left;cursor:pointer;color:#C6D2E0;border-left:3px solid transparent}
+.rail nav button:hover{background:rgba(255,255,255,.05);color:#fff}
+.rail nav button[aria-current="true"]{background:rgba(255,255,255,.09);color:#fff;border-left-color:#4C9C8B}
+.rail nav .n{font-family:var(--mono);font-size:11px;color:#6F86A2;min-width:14px}
+.rail nav button[aria-current="true"] .n{color:#4C9C8B}
+.rail nav .pill{margin-left:auto;font-family:var(--mono);font-size:11px;background:rgba(255,255,255,.14);padding:1px 6px;border-radius:3px}
+.rail nav .pill.hot{background:var(--alert);color:#fff}
+.rail-foot{padding:12px 18px;border-top:1px solid rgba(255,255,255,.09);font-size:11.5px;color:#7E93AD}
+.rail-foot b{color:#C6D2E0;font-weight:600}
+
+main{flex:1;min-width:0;height:100vh;overflow:auto;display:flex;flex-direction:column}
+.topbar{background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:stretch;position:sticky;top:0;z-index:5}
+.topbar .ctx{padding:11px 18px;border-right:1px solid var(--line-soft)}
+.topbar .ctx .k{font-size:11.5px;color:var(--ink-faint)}
+.topbar .ctx .v{font-family:var(--mono);font-size:14px}
+.topbar .ctx .v.bad{color:var(--alert)} .topbar .ctx .v.good{color:var(--ok)}
+.topbar .grow{flex:1}
+.demo-flag{background:var(--warn-bg);color:var(--warn);border-bottom:1px solid #EBD9B6;padding:5px 20px;font-size:12px}
+.wrap{padding:18px 22px 50px;max-width:1180px;flex:1}
+h2{font-size:19px;margin:0 0 16px;font-weight:600;letter-spacing:-.1px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:4px;margin-bottom:16px}
+.panel > header{padding:11px 14px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px}
+.panel > header h4{margin:0;font-size:13.5px;font-weight:600}
+.panel > header .note{font-size:12px;color:var(--ink-faint);margin-left:auto;font-family:var(--mono)}
+.panel .body{padding:14px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11.5px;font-weight:600;color:var(--ink-faint);padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-family:var(--mono);white-space:nowrap}
+.mono{font-family:var(--mono)}
+.muted{color:var(--ink-faint)}
+.sm{font-size:11.5px}
+.empty{padding:24px 14px;text-align:center;color:var(--ink-faint)}
+
+.btn{background:var(--ink);color:#fff;border:1px solid var(--ink);border-radius:3px;padding:7px 13px;cursor:pointer;font-size:13px}
+.btn:hover{background:#1B3552}
+.btn.sec{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn.sec:hover{background:#F3F6FA}
+.btn.ok{background:var(--ok);border-color:var(--ok)}
+.btn.ok:hover{background:#095648}
+.btn.dngr{background:var(--surface);color:var(--alert);border-color:#E3BDB7}
+.btn.xs{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.field label{font-size:12px;color:var(--ink-soft)}
+.field input,.field select,.field textarea{border:1px solid var(--line);border-radius:3px;padding:7px 9px;background:#fff}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid #2E6DA4;outline-offset:-1px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row > *{flex:1;min-width:160px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tabs button{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:6px 14px;cursor:pointer;font-size:13px}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+.b{display:inline-block;font-size:11.5px;padding:1px 7px;border-radius:3px;border:1px solid;white-space:nowrap}
+.b.g{color:var(--ok);background:var(--ok-bg);border-color:#BEDCD5}
+.b.y{color:var(--warn);background:var(--warn-bg);border-color:#EBD9B6}
+.b.r{color:var(--alert);background:var(--alert-bg);border-color:#E9C4BE}
+.b.n{color:var(--ink-soft);background:#EFF3F7;border-color:var(--line)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-bottom:16px}
+.kpi{background:var(--surface);padding:13px 14px}
+.kpi .v{font-family:var(--mono);font-size:23px;line-height:1.1}
+.kpi .k{font-size:12px;color:var(--ink-soft);margin-top:3px}
+.kpi .d{font-size:11.5px;color:var(--ink-faint);margin-top:2px}
+.kpi .v.bad{color:var(--alert)} .kpi .v.good{color:var(--ok)} .kpi .v.warn{color:var(--warn)}
+
+.bar-row{display:grid;grid-template-columns:185px 1fr 44px;gap:10px;align-items:center;margin-bottom:6px;font-size:12.5px}
+.bar{height:14px;background:#E9EEF4;border-radius:2px;overflow:hidden}
+.bar > span{display:block;height:100%;background:#3A6E96}
+.bar.alt > span{background:var(--alert)}
+
+.pbi{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-left:3px solid #B98328;border-radius:4px;padding:10px 14px;margin-bottom:16px}
+.pbi .t{font-size:13.5px;font-weight:600}
+.pbi .s{font-size:12px;color:var(--ink-faint);font-family:var(--mono)}
+.pbi > div:first-child{flex:1;min-width:210px}
+
+.scrim{position:fixed;inset:0;background:rgba(16,36,59,.42);display:flex;justify-content:flex-end;z-index:40}
+.drawer{background:var(--surface);width:min(580px,95vw);height:100%;overflow:auto;border-left:1px solid var(--line);box-shadow:-8px 0 26px rgba(16,36,59,.18)}
+.modal-c{position:fixed;inset:0;background:rgba(16,36,59,.42);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+.modal{background:var(--surface);width:min(620px,96vw);max-height:88vh;overflow:auto;border-radius:5px;border:1px solid var(--line)}
+.dh{padding:14px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:12px;position:sticky;top:0;background:var(--surface)}
+.dh h4{margin:0;font-size:15px}
+.dh .x{margin-left:auto;background:none;border:0;font-size:20px;cursor:pointer;color:var(--ink-faint);line-height:1}
+.db{padding:14px}
+.mailbox{background:#F7F9FC;border:1px solid var(--line);border-radius:3px;padding:12px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;line-height:1.6}
+
+.tl{list-style:none;margin:0;padding:0 0 0 14px;border-left:2px solid var(--line-soft)}
+.tl li{position:relative;padding:0 0 12px 14px;font-size:12.5px}
+.tl li::before{content:"";position:absolute;left:-21px;top:5px;width:7px;height:7px;border-radius:50%;background:#94A5B9;border:2px solid #fff}
+.tl li .t{color:var(--ink-faint);font-family:var(--mono);font-size:11.5px}
+
+.forms{list-style:none;margin:8px 0 0;padding:0}
+.forms li{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12.5px;border-bottom:1px solid var(--line-soft)}
+.forms li:last-child{border-bottom:0}
+.forms input{width:15px;height:15px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pie{border-top:1px solid var(--line);background:var(--surface);padding:13px 22px;font-size:12px;color:var(--ink-faint)}
+.pie b{color:var(--ink-soft);font-weight:600}
+
+@media(max-width:900px){
+  body{display:block}
+  .rail{width:100%;height:auto;position:static}
+  .rail nav{display:flex;overflow-x:auto}
+  .rail nav button{width:auto;white-space:nowrap;border-left:0;border-bottom:3px solid transparent}
+  .rail nav button[aria-current="true"]{border-bottom-color:#4C9C8B}
+  .rail-foot{display:none}
+  main{height:auto}
+  .split{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<aside class="rail">
+  <div class="rail-head"><h1>Demo AFS</h1></div>
+  <nav id="nav"></nav>
+  <div class="rail-foot">Usuario: <b>Andrea Vera</b><br>Ejecutiva de servicio</div>
+</aside>
+
+<main>
+  <div class="demo-flag">Datos ficticios de demostración.</div>
+  <div class="topbar" id="topbar"></div>
+  <div class="wrap" id="view"></div>
+  <footer class="pie">Prototipo funcional con datos ficticios · <b>Ing. Christian Flores, Mgtr.</b> — gestión de procesos, transformación digital e inteligencia de negocios.</footer>
+</main>
+
+<div id="layer"></div>
+
+<script>
+const RESP = ["Aperturas","Servicios","Tarjetas","Transferencias","Crédito"];
+const EJEC = ["Andrea Vera","Karla Mora","Mónica Salas"];
+const SLA_H = 8;
+
+const F_APE = ["Solicitud de apertura","Formulario de conocimiento del cliente","Declaración de origen de fondos","Registro de firmas","Copia de identificación"];
+const F_ACT = ["Formulario de actualización","Copia de identificación","Soporte de domicilio"];
+const F_TRF = ["Orden de transferencia","Declaración de origen de fondos","Copia de identificación"];
+
+const CAT = [
+  {c:"APE-01", n:"Apertura de cuenta — titular único",   f:"Aperturas",      t:25, m:22, r:"Aperturas",      v:true,  fm:F_APE},
+  {c:"APE-02", n:"Apertura de cuenta — dos titulares",   f:"Aperturas",      t:30, m:31, r:"Aperturas",      v:true,  fm:F_APE.concat(["Registro de firmas del segundo titular"])},
+  {c:"APE-03", n:"Apertura de cuenta — menor de edad",   f:"Aperturas",      t:25, m:28, r:"Aperturas",      v:true,  fm:F_APE.concat(["Partida de nacimiento","Autorización del representante"])},
+  {c:"APE-04", n:"Apertura Gana Más / Digital",          f:"Aperturas",      t:15, m:14, r:"Aperturas",      v:false, fm:["Solicitud digital","Copia de identificación"]},
+  {c:"ACT-01", n:"Actualización de datos",               f:"Servicios",      t:10, m:12, r:"Servicios",      v:true,  fm:F_ACT},
+  {c:"JUS-01", n:"Justificación de fondos",              f:"Servicios",      t:0,  m:18, r:"Servicios",      v:true,  fm:["Declaración de origen de fondos","Soporte documental","Copia de identificación"]},
+  {c:"CER-01", n:"Certificado bancario",                 f:"Servicios",      t:10, m:8,  r:"Servicios",      v:false, fm:["Solicitud de certificado"]},
+  {c:"EST-01", n:"Estado de cuenta",                     f:"Servicios",      t:5,  m:6,  r:"Servicios",      v:false, fm:["Solicitud de estado de cuenta"]},
+  {c:"FIR-01", n:"Inclusión de firma",                   f:"Servicios",      t:10, m:11, r:"Servicios",      v:true,  fm:["Registro de firmas","Copia de identificación"]},
+  {c:"TAR-01", n:"Emisión de tarjeta de débito",         f:"Tarjetas",       t:12, m:10, r:"Tarjetas",       v:false, fm:["Solicitud de tarjeta","Copia de identificación"]},
+  {c:"TAR-02", n:"Activación de tarjeta",                f:"Tarjetas",       t:0,  m:5,  r:"Tarjetas",       v:false, fm:["Registro de activación"]},
+  {c:"TRF-01", n:"Transferencia vía central",            f:"Transferencias", t:8,  m:12, r:"Transferencias", v:false, fm:["Orden de transferencia","Copia de identificación"]},
+  {c:"TRF-02", n:"Wire transfer",                        f:"Transferencias", t:35, m:20, r:"Transferencias", v:true,  fm:F_TRF},
+  {c:"DES-01", n:"Desbloqueo de fondos",                 f:"Transferencias", t:0,  m:10, r:"Transferencias", v:false, fm:["Solicitud de desbloqueo","Soporte documental"]},
+  {c:"INV-01", n:"Inversión — renovación o cancelación", f:"Inversiones",    t:0,  m:20, r:"Servicios",      v:true,  fm:["Instrucción de inversión","Copia de identificación"]},
+  {c:"CRE-01", n:"Crédito — hipotecario o consumo",      f:"Crédito",        t:0,  m:35, r:"Crédito",        v:true,  fm:["Solicitud de crédito","Declaración patrimonial","Soporte de ingresos","Copia de identificación"]},
+  {c:"CRE-02", n:"Cash collateral / back to back",       f:"Crédito",        t:0,  m:32, r:"Crédito",        v:true,  fm:["Solicitud de crédito","Contrato de garantía","Copia de identificación"]}
+];
+const cat = c => CAT.find(x => x.c === c);
+
+const MOTIVOS_OBS = ["Falta información","Error en la solicitud","Documento ilegible","Datos no coinciden con el registro","Requiere aprobación adicional"];
+const MOTIVOS_LLAM = ["Consulta de saldo","Estado de un trámite","Requisitos de apertura","Aviso de documento en oficina","Seguimiento de observación","Bloqueo de tarjeta"];
+const RESULT_LLAM = ["Resuelta en línea","Escalada a matriz","Cliente contactado","Sin respuesta"];
+
+let seq = {v:0, r:0, rec:0};
+const S = { visitas:[], reqs:[], valija:[], llamadas:[], hoy:new Date(), historico:[] };
+
+const H = h => { const d = new Date(); d.setHours(d.getHours() - h); return d; };
+const hhmm = d => d ? new Date(d).toLocaleTimeString("es-EC",{hour:"2-digit",minute:"2-digit",hour12:false}) : "—";
+const usd = n => "$" + n.toFixed(2);
+const mins = (a,b) => Math.max(0, Math.round((new Date(b) - new Date(a)) / 60000));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function nuevaVisita(cliente, doc, motivo, canal, tsLlegada){
+  seq.v++;
+  const v = { id:"V"+String(seq.v).padStart(3,"0"), token:"A-"+String(seq.v).padStart(3,"0"),
+    cliente, doc, motivo, canal: canal || "Ventanilla",
+    tsLlegada: tsLlegada || new Date(), tsInicio:null, tsFin:null, ejecutivo:null, estado:"EN_ESPERA" };
+  S.visitas.push(v); return v;
+}
+function nuevoReq(visitaId, code, ts){
+  seq.r++;
+  const k = cat(code);
+  const r = { id:"R"+String(seq.r).padStart(4,"0"), visitaId, code, tarifa:k.t,
+    forms: k.fm.map(n => ({n, ok:false})), estado:"BORRADOR", recibo:null, entregadoA:null, arqueado:false,
+    tsCreado: ts || new Date(), tsEnviado:null, tsRespuesta:null, motivo:null, seguimiento:null, reenvios:0, eventos:[] };
+  ev(r, "Requerimiento registrado", "Ejecutivo", r.tsCreado);
+  S.reqs.push(r); return r;
+}
+function ev(r, texto, actor, ts){ r.eventos.push({t: ts || new Date(), texto, actor: actor || "Andrea Vera"}); }
+const reqsDe = vid => S.reqs.filter(r => r.visitaId === vid);
+const visita = id => S.visitas.find(v => v.id === id);
+const formsOk = r => r.forms.every(f => f.ok);
+
+(function seed(){
+  const mk = (cli, doc, motivo, hAgo, codes, avance) => {
+    const v = nuevaVisita(cli, doc, motivo, "Ventanilla", H(hAgo));
+    v.tsInicio = H(hAgo - 0.15); v.ejecutivo = EJEC[seq.v % 3];
+    const rs = codes.map(c => nuevoReq(v.id, c, v.tsInicio));
+    if (avance >= 1) rs.forEach(r => { r.forms.forEach(f => f.ok = true);
+      r.estado="FIRMADO"; ev(r,"Formularios completos; solicitud firmada por el cliente","Cliente",H(hAgo-0.4)); });
+    if (avance >= 2) rs.forEach(r => { r.estado="COBRADO"; seq.rec++; r.recibo="RC-"+String(1200+seq.rec);
+      ev(r,"Recibo "+r.recibo+" emitido por "+usd(r.tarifa),"Ejecutivo",H(hAgo-0.5)); });
+    if (avance >= 3) rs.forEach(r => { r.estado="ENVIADO"; r.tsEnviado=H(hAgo-0.6);
+      ev(r,"Requerimiento enviado a matriz","Ejecutivo",r.tsEnviado); });
+    v.estado = avance >= 3 ? "ATENDIDA" : "EN_ATENCION";
+    if (avance >= 3) v.tsFin = H(hAgo - 0.7);
+    return {v, rs};
+  };
+
+  const a = mk("María Fernanda Cedeño","P-0912…","Servicios",5.2,["ACT-01","EST-01","TAR-02"],3);
+  a.rs.forEach(r => { r.estado="CERRADO"; r.tsRespuesta=H(4.1);
+    ev(r,"Matriz responde: aprobado","Operaciones matriz",r.tsRespuesta);
+    ev(r,"Requerimiento cerrado","Sistema",H(4.0)); r.entregadoA=cat(r.code).r; r.arqueado=true; });
+
+  const b = mk("Jorge Andrés Peñaherrera","P-1744…","Aperturas",4.4,["APE-02","TAR-01"],3);
+  b.rs[0].estado="OBSERVADO"; b.rs[0].tsRespuesta=H(3.1); b.rs[0].motivo=MOTIVOS_OBS[0];
+  ev(b.rs[0],"Matriz responde: observado — "+MOTIVOS_OBS[0],"Operaciones matriz",H(3.1));
+  b.rs[1].estado="CERRADO"; b.rs[1].tsRespuesta=H(3.2); ev(b.rs[1],"Matriz responde: aprobado","Operaciones matriz",H(3.2));
+  b.rs.forEach(r => { r.entregadoA=cat(r.code).r; r.arqueado=true; });
+
+  mk("Silvia Rocío Andrade","P-2288…","Transferencias",3.0,["TRF-02","JUS-01"],3);
+  mk("Luis Alberto Vinueza","P-3011…","Servicios",2.1,["CER-01","FIR-01","ACT-01"],3);
+  mk("Rosa Elena Guamán","P-4417…","Aperturas",1.2,["APE-04","TAR-01"],2);
+  mk("Diego Xavier Loor","P-5520…","Inversiones",0.7,["INV-01"],1);
+
+  nuevaVisita("Carmen Beatriz Sisalima","P-6633…","Servicios","Ventanilla",H(0.45));
+  nuevaVisita("Freddy Nicolás Ochoa","P-7788…","Tarjetas","Ventanilla",H(0.28));
+  nuevaVisita("Ana Lucía Zambrano","P-8891…","Servicios","Ventanilla",H(0.1));
+
+  [["Pablo Merchán","Consulta de saldo","Resuelta en línea",2.6],
+   ["Verónica Tapia","Estado de un trámite","Escalada a matriz",1.9],
+   ["Hugo Chalco","Requisitos de apertura","Resuelta en línea",1.1]]
+   .forEach(([cl,mo,re,h]) => S.llamadas.push({id:"L"+(S.llamadas.length+1), cliente:cl, motivo:mo, resultado:re, ts:H(h), ejecutivo:EJEC[S.llamadas.length%3]}));
+
+  S.valija.push({id:"VJ-2041", tipo:"RECEPCION", guia:"7742-0091", cliente:"María Fernanda Cedeño", detalle:"Tarjeta de débito emitida", estado:"POR_NOTIFICAR", tsRecepcion:H(2.4), tsLlamada:null, tsEntrega:null});
+  S.valija.push({id:"VJ-2042", tipo:"RECEPCION", guia:"7742-0091", cliente:"Jorge Andrés Peñaherrera", detalle:"Contrato de cuenta", estado:"NOTIFICADO", tsRecepcion:H(2.4), tsLlamada:H(1.5), tsEntrega:null});
+  S.valija.push({id:"VJ-2043", tipo:"RECEPCION", guia:"7742-0091", cliente:"Silvia Rocío Andrade", detalle:"Certificado de inversión", estado:"ENTREGADO", tsRecepcion:H(2.4), tsLlamada:H(2.0), tsEntrega:H(0.9)});
+
+  const base = new Date();
+  for (let i = 19; i >= 1; i--){
+    const d = new Date(base); d.setDate(d.getDate() - i);
+    if (d.getDay() === 0 || d.getDay() === 6) continue;
+    const cli = 6 + (i * 7) % 6, req = cli * 2 + (i % 4);
+    S.historico.push({ fecha:d, clientes:cli, reqs:req,
+      recaudado: 95 + (i * 13) % 90, observados: i % 5 === 0 ? 2 : (i % 3 === 0 ? 1 : 0),
+      llamadas: 3 + i % 5, valija: i % 4 === 0 ? 4 : 2 });
+  }
+})();
+</script>
+<script>
+const MOD = [
+  {id:"recepcion",   n:"Recepción"},
+  {id:"atencion",    n:"Atención"},
+  {id:"seguimiento", n:"Seguimiento"},
+  {id:"caja",        n:"Caja"},
+  {id:"valija",      n:"Valija"},
+  {id:"llamadas",    n:"Llamadas"},
+  {id:"reportes",    n:"Reportes"}
+];
+let vista = "recepcion", periodo = "dia";
+
+const enEspera   = () => S.visitas.filter(v => v.estado === "EN_ESPERA");
+const enMatriz   = () => S.reqs.filter(r => ["ENVIADO","EN_REVISION"].includes(r.estado));
+const horasSLA   = r => r.tsEnviado ? (SLA_H - (Date.now() - new Date(r.tsEnviado)) / 3.6e6) : SLA_H;
+const vencidos   = () => enMatriz().filter(r => horasSLA(r) < 0);
+const conRetorno = () => S.reqs.filter(r => ["OBSERVADO","NO_PROCEDE"].includes(r.estado));
+const totalRecaudado = () => S.reqs.filter(r => r.recibo).reduce((a,r) => a + r.tarifa, 0);
+
+function esperadoCaja(){
+  const m = {}; RESP.forEach(x => m[x] = {esp:0, n:0});
+  S.reqs.filter(r => r.recibo).forEach(r => { const k = cat(r.code).r; m[k].esp += r.tarifa; m[k].n++; });
+  return m;
+}
+
+function badgeEstado(e){
+  const map = { BORRADOR:["n","Borrador"], FIRMADO:["n","Firmado"], COBRADO:["y","Cobrado"],
+    ENVIADO:["y","Enviado a matriz"], EN_REVISION:["y","En revisión"], OBSERVADO:["r","Observado"],
+    NO_PROCEDE:["r","No procede"], CERRADO:["g","Cerrado"] };
+  const [k,t] = map[e] || ["n",e];
+  return `<span class="b ${k}">${t}</span>`;
+}
+
+function renderNav(){
+  document.getElementById("nav").innerHTML = MOD.map((m,i) => {
+    let pill = "";
+    if (m.id === "recepcion" && enEspera().length) pill = `<span class="pill">${enEspera().length}</span>`;
+    if (m.id === "seguimiento"){
+      const v = vencidos().length + conRetorno().length;
+      if (v) pill = `<span class="pill hot">${v}</span>`;
+      else if (enMatriz().length) pill = `<span class="pill">${enMatriz().length}</span>`;
+    }
+    if (m.id === "valija"){
+      const p = S.valija.filter(x => x.estado === "POR_NOTIFICAR").length;
+      if (p) pill = `<span class="pill">${p}</span>`;
+    }
+    return `<button data-m="${m.id}" aria-current="${vista===m.id}"><span class="n">${i+1}</span>${m.n}${pill}</button>`;
+  }).join("");
+  document.querySelectorAll("#nav button").forEach(b => b.onclick = () => { vista = b.dataset.m; render(); });
+}
+
+function renderTop(){
+  const esp = enEspera();
+  const espProm = esp.length ? Math.round(esp.reduce((a,v) => a + mins(v.tsLlegada, new Date()), 0) / esp.length) : 0;
+  const venc = vencidos().length;
+  document.getElementById("topbar").innerHTML = `
+    <div class="ctx"><div class="k">Fecha</div><div class="v">${S.hoy.toLocaleDateString("es-EC")}</div></div>
+    <div class="ctx"><div class="k">En espera</div><div class="v ${espProm>15?"bad":""}">${esp.length} · ${espProm} min</div></div>
+    <div class="ctx"><div class="k">Requerimientos</div><div class="v">${S.reqs.length}</div></div>
+    <div class="ctx"><div class="k">En matriz</div><div class="v ${venc?"bad":""}">${enMatriz().length}${venc?" ("+venc+")":""}</div></div>
+    <div class="ctx"><div class="k">Recaudado</div><div class="v good">${usd(totalRecaudado())}</div></div>
+    <div class="grow"></div>`;
+}
+
+function render(){
+  renderNav(); renderTop();
+  document.getElementById("view").innerHTML = ({
+    recepcion:vRecepcion, atencion:vAtencion, seguimiento:vSeguimiento,
+    caja:vCaja, valija:vValija, llamadas:vLlamadas, reportes:vReportes})[vista]();
+  bind();
+  window.scrollTo(0,0);
+}
+
+/* ---------------- Recepción ---------------- */
+function vRecepcion(){
+  const esp = enEspera();
+  const filas = esp.length ? esp.map(v => `
+    <tr>
+      <td class="mono">${v.token}</td>
+      <td>${esc(v.cliente)}<div class="muted mono sm">${v.doc}</div></td>
+      <td>${esc(v.motivo)}</td>
+      <td class="mono">${hhmm(v.tsLlegada)}</td>
+      <td class="num">${mins(v.tsLlegada, new Date())} min</td>
+      <td><button class="btn xs" data-atender="${v.id}">Iniciar atención</button></td>
+    </tr>`).join("")
+    : `<tr><td colspan="6" class="empty">Sin clientes en espera.</td></tr>`;
+
+  return `
+  <h2>Recepción</h2>
+  <div class="panel">
+    <header><h4>Registrar llegada</h4></header>
+    <div class="body">
+      <div class="row">
+        <div class="field"><label for="f-cli">Cliente</label><input id="f-cli" placeholder="Nombre y apellido"></div>
+        <div class="field"><label for="f-doc">Identificación</label><input id="f-doc" placeholder="P-0000…"></div>
+        <div class="field"><label for="f-mot">Motivo</label>
+          <select id="f-mot">${[...new Set(CAT.map(c => c.f))].map(f => `<option>${f}</option>`).join("")}<option>Consulta general</option></select>
+        </div>
+        <div class="field"><label for="f-can">Canal</label><select id="f-can"><option>Ventanilla</option><option>Teléfono</option></select></div>
+      </div>
+      <div class="actions"><button class="btn" id="b-turno">Asignar turno</button></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <header><h4>Turnos en espera</h4><span class="note">orden de llegada</span></header>
+    <table>
+      <thead><tr><th>Turno</th><th>Cliente</th><th>Motivo</th><th>Llegada</th><th class="num">Espera</th><th></th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>
+  </div>`;
+}
+
+/* ---------------- Atención ---------------- */
+function vAtencion(){
+  const enCurso = S.visitas.filter(v => v.estado === "EN_ATENCION");
+  const lista = enCurso.length ? enCurso.map(v => {
+    const rs = reqsDe(v.id);
+    const pend = rs.reduce((a,r) => a + r.forms.filter(f => !f.ok).length, 0);
+    return `<tr>
+      <td class="mono">${v.token}</td>
+      <td>${esc(v.cliente)}</td>
+      <td>${esc(v.ejecutivo)}</td>
+      <td class="num">${rs.length}</td>
+      <td>${pend ? `<span class="b y">${pend} formularios pendientes</span>` : `<span class="b g">Documentación completa</span>`}</td>
+      <td class="num">${usd(rs.reduce((a,r)=>a+r.tarifa,0))}</td>
+      <td><button class="btn xs sec" data-abrir="${v.id}">Abrir</button></td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="7" class="empty">Ninguna atención en curso.</td></tr>`;
+
+  const cerradas = S.visitas.filter(v => v.estado === "ATENDIDA");
+
+  return `
+  <h2>Atención</h2>
+  <div class="panel">
+    <header><h4>En curso</h4></header>
+    <table>
+      <thead><tr><th>Turno</th><th>Cliente</th><th>Ejecutivo</th><th class="num">Reqs.</th><th>Documentación</th><th class="num">Valor</th><th></th></tr></thead>
+      <tbody>${lista}</tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <header><h4>Atendidas hoy</h4><span class="note">${cerradas.length} clientes · ${S.reqs.filter(r=>r.visitaId).length} requerimientos</span></header>
+    <table>
+      <thead><tr><th>Turno</th><th>Cliente</th><th>Ejecutivo</th><th>Requerimientos</th><th class="num">Duración</th><th></th></tr></thead>
+      <tbody>${cerradas.map(v => {
+        const rs = reqsDe(v.id);
+        return `<tr><td class="mono">${v.token}</td><td>${esc(v.cliente)}</td><td>${esc(v.ejecutivo)}</td>
+        <td>${rs.map(r => `<span class="b n" title="${esc(cat(r.code).n)}">${r.code}</span>`).join(" ")}</td>
+        <td class="num">${v.tsFin?mins(v.tsInicio,v.tsFin):"—"} min</td>
+        <td><button class="btn xs sec" data-abrir="${v.id}">Ver</button></td></tr>`;
+      }).join("")}</tbody>
+    </table>
+  </div>`;
+}
+
+function drawerVisita(id){
+  const v = visita(id); if (!v) return;
+  const rs = reqsDe(id);
+  const total = rs.reduce((a,r) => a + r.tarifa, 0);
+  const borradores = rs.filter(r => r.estado === "BORRADOR");
+  const puedeFirmar = borradores.length > 0 && borradores.every(formsOk);
+  const faltan = borradores.reduce((a,r) => a + r.forms.filter(f => !f.ok).length, 0);
+  const puedeCobrar = rs.some(r => r.estado === "FIRMADO");
+  const puedeEnviar = rs.some(r => r.estado === "COBRADO");
+
+  const bloques = rs.length ? rs.map(r => `
+    <div class="panel" style="margin-bottom:10px">
+      <header>
+        <h4><span class="mono">${r.code}</span> · ${esc(cat(r.code).n)}</h4>
+        <span class="note">${usd(r.tarifa)}</span>
+      </header>
+      <div class="body" style="padding:10px 14px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${badgeEstado(r.estado)}
+          ${r.recibo?`<span class="b n mono">${r.recibo}</span>`:""}
+          <span class="b n">${r.forms.filter(f=>f.ok).length}/${r.forms.length} formularios</span>
+          <button class="btn xs sec" data-req="${r.id}" style="margin-left:auto">Historial</button>
+        </div>
+        <ul class="forms">
+          ${r.forms.map((f,i) => `<li>
+            <input type="checkbox" id="fm-${r.id}-${i}" data-form="${r.id}|${i}" ${f.ok?"checked":""} ${r.estado==="BORRADOR"?"":"disabled"}>
+            <label for="fm-${r.id}-${i}">${esc(f.n)}</label></li>`).join("")}
+        </ul>
+      </div>
+    </div>`).join("") : `<div class="empty">Sin requerimientos registrados.</div>`;
+
+  layer(`
+  <div class="scrim" data-close><div class="drawer" onclick="event.stopPropagation()">
+    <div class="dh">
+      <div><h4>${esc(v.cliente)} <span class="mono muted">${v.token}</span></h4>
+      <div class="muted sm mono">${v.doc} · llegada ${hhmm(v.tsLlegada)} · atención ${hhmm(v.tsInicio)} · ${esc(v.canal)}</div></div>
+      <button class="x" data-close>&times;</button>
+    </div>
+    <div class="db">
+      <div class="field"><label for="add-req">Agregar requerimiento</label>
+        <select id="add-req">${CAT.map(c => `<option value="${c.c}">${c.c} — ${c.n}${c.t?" ("+usd(c.t)+")":""}</option>`).join("")}</select>
+      </div>
+      <div class="actions" style="margin-top:0"><button class="btn sec xs" data-add="${v.id}">Agregar</button></div>
+
+      <div style="margin-top:14px">${bloques}</div>
+
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);font-weight:600">
+        <span>Total a cobrar</span><span class="mono">${usd(total)}</span>
+      </div>
+
+      <div class="actions">
+        <button class="btn sec" data-firmar="${v.id}" ${puedeFirmar?"":"disabled"}>
+          ${faltan && borradores.length ? "Faltan "+faltan+" formularios" : "Registrar firma"}</button>
+        <button class="btn ok" data-cobrar="${v.id}" ${puedeCobrar?"":"disabled"}>Cobrar y emitir recibo</button>
+        <button class="btn" data-enviar="${v.id}" ${puedeEnviar?"":"disabled"}>Enviar a matriz</button>
+      </div>
+    </div>
+  </div></div>`);
+}
+
+function drawerReq(id){
+  const r = S.reqs.find(x => x.id === id); if (!r) return;
+  const v = visita(r.visitaId);
+  layer(`
+  <div class="scrim" data-close><div class="drawer" onclick="event.stopPropagation()">
+    <div class="dh"><div><h4>${r.id} · ${r.code}</h4>
+    <div class="muted sm">${esc(cat(r.code).n)}${v?" · "+esc(v.cliente):""}</div></div>
+    <button class="x" data-close>&times;</button></div>
+    <div class="db">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${badgeEstado(r.estado)}
+        ${r.recibo?`<span class="b n mono">${r.recibo}</span>`:""}
+        <span class="b n mono">${usd(r.tarifa)}</span>
+        <span class="b n">${cat(r.code).r}</span>
+        ${r.reenvios?`<span class="b y">${r.reenvios} reenvío(s)</span>`:""}</div>
+      <ul class="tl">${r.eventos.map(e => `<li><b>${esc(e.texto)}</b><div class="t">${hhmm(e.t)} · ${esc(e.actor)}</div></li>`).join("")}</ul>
+    </div>
+  </div></div>`);
+}
+
+/* ---------------- Seguimiento ---------------- */
+function vSeguimiento(){
+  const espera = enMatriz().sort((a,b) => horasSLA(a) - horasSLA(b));
+  const retorno = conRetorno();
+
+  const fEspera = espera.length ? espera.map(r => {
+    const v = visita(r.visitaId); const h = horasSLA(r);
+    const sla = h < 0 ? `<span class="b r">vencido ${Math.abs(h).toFixed(1)} h</span>`
+              : h < 2 ? `<span class="b y">${h.toFixed(1)} h</span>`
+                      : `<span class="b n">${h.toFixed(1)} h</span>`;
+    return `<tr>
+      <td class="mono">${r.id}</td>
+      <td>${esc(v?v.cliente:"—")}<div class="muted sm">${r.code} · ${esc(cat(r.code).n)}</div></td>
+      <td class="mono">${hhmm(r.tsEnviado)}</td>
+      <td>${sla}</td>
+      <td>
+        <button class="btn xs ok" data-resp="${r.id}|ok">Aprobado</button>
+        <button class="btn xs dngr" data-resp="${r.id}|obs">Observado</button>
+        <button class="btn xs sec" data-req="${r.id}">Historial</button>
+      </td></tr>`;
+  }).join("") : `<tr><td colspan="5" class="empty">Sin requerimientos pendientes en matriz.</td></tr>`;
+
+  const fRetorno = retorno.length ? retorno.map(r => {
+    const v = visita(r.visitaId);
+    return `<tr>
+      <td class="mono">${r.id}</td>
+      <td>${esc(v?v.cliente:"—")}<div class="muted sm">${r.code} · ${esc(cat(r.code).n)}</div></td>
+      <td>${badgeEstado(r.estado)}<div class="sm" style="color:var(--alert)">${esc(r.motivo||"")}</div></td>
+      <td class="sm">${r.seguimiento ? "Cliente contactado "+hhmm(r.seguimiento) : `<span class="muted">Sin contactar</span>`}</td>
+      <td>
+        ${r.seguimiento
+          ? `<button class="btn xs" data-reenviar="${r.id}">Reenviar a matriz</button>`
+          : `<button class="btn xs sec" data-seguir="${r.id}">Registrar llamada</button>`}
+        <button class="btn xs sec" data-req="${r.id}">Historial</button>
+      </td></tr>`;
+  }).join("") : `<tr><td colspan="5" class="empty">Sin requerimientos devueltos.</td></tr>`;
+
+  const cerrados = S.reqs.filter(r => r.estado === "CERRADO");
+  const leads = cerrados.filter(r => r.tsEnviado && r.tsRespuesta).map(r => mins(r.tsEnviado, r.tsRespuesta) / 60);
+  const leadProm = leads.length ? leads.reduce((a,b) => a+b, 0) / leads.length : 0;
+  const env = S.reqs.filter(r => r.tsEnviado).length;
+  const fpy = env ? 100 * (1 - S.reqs.filter(r => r.motivo).length / env) : 100;
+
+  return `
+  <h2>Seguimiento</h2>
+  <div class="kpis">
+    <div class="kpi"><div class="v">${enMatriz().length}</div><div class="k">En matriz</div><div class="d">compromiso ${SLA_H} h</div></div>
+    <div class="kpi"><div class="v ${vencidos().length?"bad":"good"}">${vencidos().length}</div><div class="k">Fuera de tiempo</div></div>
+    <div class="kpi"><div class="v ${retorno.length?"warn":"good"}">${retorno.length}</div><div class="k">Devueltos</div></div>
+    <div class="kpi"><div class="v">${leadProm.toFixed(1)} h</div><div class="k">Respuesta promedio</div><div class="d">${cerrados.length} cerrados</div></div>
+    <div class="kpi"><div class="v ${fpy<90?"warn":"good"}">${fpy.toFixed(0)}%</div><div class="k">Aprobado al primer envío</div></div>
+  </div>
+
+  <div class="panel">
+    <header><h4>Esperando respuesta de matriz</h4><span class="note">${espera.length}</span></header>
+    <table><thead><tr><th>Caso</th><th>Cliente y requerimiento</th><th>Enviado</th><th>Tiempo</th><th></th></tr></thead>
+    <tbody>${fEspera}</tbody></table>
+  </div>
+
+  <div class="panel">
+    <header><h4>Devueltos — gestión con el cliente</h4><span class="note">${retorno.length}</span></header>
+    <table><thead><tr><th>Caso</th><th>Cliente y requerimiento</th><th>Respuesta</th><th>Contacto</th><th></th></tr></thead>
+    <tbody>${fRetorno}</tbody></table>
+  </div>`;
+}
+
+/* ---------------- Caja ---------------- */
+function vCaja(){
+  const m = esperadoCaja();
+  const filas = RESP.map(k => {
+    const entregado = S.reqs.filter(r => r.recibo && cat(r.code).r === k && r.arqueado).reduce((a,r) => a + r.tarifa, 0);
+    const pend = m[k].esp - entregado;
+    return `<tr>
+      <td>${k}</td>
+      <td class="num">${m[k].n}</td>
+      <td class="num">${usd(m[k].esp)}</td>
+      <td class="num">${usd(entregado)}</td>
+      <td class="num">${pend === 0 ? `<span class="b g">Cuadrado</span>` : `<span class="b y">${usd(pend)}</span>`}</td>
+      <td>${pend > 0 ? `<button class="btn xs ok" data-entregar="${k}">Registrar entrega</button>` : `<span class="muted">—</span>`}</td>
+    </tr>`;
+  }).join("");
+
+  const recibos = S.reqs.filter(r => r.recibo);
+  return `
+  <h2>Caja</h2>
+  <div class="panel">
+    <header><h4>Entrega por responsable</h4><span class="note">${S.hoy.toLocaleDateString("es-EC")}</span></header>
+    <table>
+      <thead><tr><th>Responsable</th><th class="num">Recibos</th><th class="num">Esperado</th><th class="num">Entregado</th><th class="num">Por entregar</th><th></th></tr></thead>
+      <tbody>${filas}</tbody>
+      <tfoot><tr>
+        <td style="font-weight:600;border-top:1px solid var(--line)">Total</td>
+        <td class="num" style="border-top:1px solid var(--line)">${recibos.length}</td>
+        <td class="num" style="font-weight:600;border-top:1px solid var(--line)">${usd(totalRecaudado())}</td>
+        <td class="num" style="border-top:1px solid var(--line)">${usd(S.reqs.filter(r=>r.arqueado).reduce((a,r)=>a+r.tarifa,0))}</td>
+        <td colspan="2" style="border-top:1px solid var(--line)"></td>
+      </tr></tfoot>
+    </table>
+  </div>
+
+  <div class="panel">
+    <header><h4>Recibos emitidos</h4><span class="note">${recibos.length}</span></header>
+    <table>
+      <thead><tr><th>Recibo</th><th>Cliente</th><th>Requerimiento</th><th>Responsable</th><th class="num">Valor</th><th>Entregado</th></tr></thead>
+      <tbody>${recibos.length ? recibos.map(r => {
+        const v = visita(r.visitaId);
+        return `<tr><td class="mono">${r.recibo}</td><td>${esc(v?v.cliente:"—")}</td>
+        <td class="mono">${r.code}</td><td>${cat(r.code).r}</td><td class="num">${usd(r.tarifa)}</td>
+        <td>${r.arqueado?`<span class="b g">Sí</span>`:`<span class="b y">Pendiente</span>`}</td></tr>`;
+      }).join("") : `<tr><td colspan="6" class="empty">Sin recibos emitidos.</td></tr>`}</tbody>
+    </table>
+  </div>`;
+}
+
+/* ---------------- Valija ---------------- */
+function vValija(){
+  const rec = S.valija.filter(x => x.tipo === "RECEPCION");
+  const paraEnviar = S.reqs.filter(r => r.estado === "CERRADO" && cat(r.code).v);
+  return `
+  <h2>Valija</h2>
+  <div class="panel">
+    <header><h4>Recibida</h4><span class="note">guía 7742-0091 · ${rec.length} piezas</span></header>
+    <table>
+      <thead><tr><th>Pieza</th><th>Cliente</th><th>Documento</th><th>Recepción</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${rec.map(x => `<tr>
+        <td class="mono">${x.id}</td><td>${esc(x.cliente)}</td><td>${esc(x.detalle)}</td>
+        <td class="mono">${hhmm(x.tsRecepcion)}</td>
+        <td>${x.estado==="ENTREGADO"?`<span class="b g">Entregado ${hhmm(x.tsEntrega)}</span>`
+             :x.estado==="NOTIFICADO"?`<span class="b y">Notificado ${hhmm(x.tsLlamada)}</span>`
+             :`<span class="b r">Por notificar</span>`}</td>
+        <td>${x.estado==="POR_NOTIFICAR"?`<button class="btn xs" data-llamar="${x.id}">Llamar al cliente</button>`
+            :x.estado==="NOTIFICADO"?`<button class="btn xs ok" data-entregado="${x.id}">Marcar entregado</button>`:`<span class="muted">—</span>`}</td>
+      </tr>`).join("")}</tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <header><h4>Por enviar a matriz</h4><span class="note">${paraEnviar.length} piezas</span></header>
+    <table>
+      <thead><tr><th>Caso</th><th>Cliente</th><th>Documento</th><th>Cierre</th></tr></thead>
+      <tbody>${paraEnviar.length ? paraEnviar.map(r => {
+        const v = visita(r.visitaId);
+        return `<tr><td class="mono">${r.id}</td><td>${esc(v?v.cliente:"—")}</td>
+        <td>${esc(cat(r.code).n)}</td><td class="mono">${hhmm(r.tsRespuesta)}</td></tr>`;
+      }).join("") : `<tr><td colspan="4" class="empty">Sin documentos por despachar.</td></tr>`}</tbody>
+    </table>
+    <div class="body" style="border-top:1px solid var(--line-soft)">
+      <button class="btn" id="b-guia" ${paraEnviar.length?"":"disabled"}>Generar guía de envío</button>
+    </div>
+  </div>`;
+}
+
+/* ---------------- Llamadas ---------------- */
+function vLlamadas(){
+  return `
+  <h2>Llamadas</h2>
+  <div class="panel">
+    <header><h4>Registrar llamada</h4></header>
+    <div class="body">
+      <div class="row">
+        <div class="field"><label for="l-cli">Cliente</label><input id="l-cli" placeholder="Nombre y apellido"></div>
+        <div class="field"><label for="l-mot">Motivo</label><select id="l-mot">${MOTIVOS_LLAM.map(m => `<option>${m}</option>`).join("")}</select></div>
+        <div class="field"><label for="l-res">Resultado</label><select id="l-res">${RESULT_LLAM.map(m => `<option>${m}</option>`).join("")}</select></div>
+      </div>
+      <div class="actions"><button class="btn" id="b-llamada">Guardar</button></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <header><h4>Llamadas del día</h4><span class="note">${S.llamadas.length}</span></header>
+    <table>
+      <thead><tr><th>Hora</th><th>Cliente</th><th>Motivo</th><th>Resultado</th><th>Ejecutivo</th></tr></thead>
+      <tbody>${S.llamadas.length ? S.llamadas.slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts)).map(l => `<tr>
+        <td class="mono">${hhmm(l.ts)}</td><td>${esc(l.cliente)}</td><td>${esc(l.motivo)}</td>
+        <td><span class="b n">${esc(l.resultado)}</span></td><td>${esc(l.ejecutivo)}</td></tr>`).join("")
+        : `<tr><td colspan="5" class="empty">Sin llamadas registradas.</td></tr>`}</tbody>
+    </table>
+  </div>`;
+}
+
+/* ---------------- Reportes ---------------- */
+function vReportes(){
+  return `
+  <h2>Reportes</h2>
+  <div class="pbi">
+    <div><div class="t">Tablero publicado</div>
+    <div class="s">actualizado ${hhmm(new Date(Date.now()-38*60000))} · próxima ${hhmm(new Date(Date.now()+82*60000))}</div></div>
+    <button class="btn sec xs" id="b-excel">Abrir en Excel</button>
+    <button class="btn xs" id="b-pbi">Abrir tablero</button>
+  </div>
+  <div class="tabs">
+    <button data-per="dia" aria-pressed="${periodo==="dia"}">Diario</button>
+    <button data-per="mes" aria-pressed="${periodo==="mes"}">Mensual</button>
+  </div>
+  ${periodo === "dia" ? repDia() : repMes()}`;
+}
+
+function repDia(){
+  const atendidas = S.visitas.filter(v => v.tsInicio);
+  const esperas = atendidas.map(v => mins(v.tsLlegada, v.tsInicio));
+  const espProm = esperas.length ? Math.round(esperas.reduce((a,b)=>a+b,0)/esperas.length) : 0;
+  const reales = S.reqs.filter(r => r.visitaId).length;
+
+  const porEj = {}; EJEC.forEach(e => porEj[e] = {cli:0, req:0, min:0, usd:0});
+  atendidas.forEach(v => { if (porEj[v.ejecutivo]) porEj[v.ejecutivo].cli++; });
+  S.reqs.filter(r => r.visitaId).forEach(r => {
+    const v = visita(r.visitaId); if (!v || !porEj[v.ejecutivo]) return;
+    porEj[v.ejecutivo].req++; porEj[v.ejecutivo].min += cat(r.code).m; porEj[v.ejecutivo].usd += r.tarifa;
+  });
+
+  const causas = {}; S.reqs.filter(r => r.motivo).forEach(r => causas[r.motivo] = (causas[r.motivo]||0)+1);
+  const parList = Object.entries(causas).sort((a,b)=>b[1]-a[1]);
+  const maxC = parList.length ? parList[0][1] : 1;
+
+  const fam = {}; S.reqs.forEach(r => { const f = cat(r.code).f; fam[f] = (fam[f]||0)+1; });
+  const famList = Object.entries(fam).sort((a,b)=>b[1]-a[1]);
+  const maxF = famList.length ? famList[0][1] : 1;
+
+  return `
+  <div class="kpis">
+    <div class="kpi"><div class="v">${atendidas.length}</div><div class="k">Clientes atendidos</div></div>
+    <div class="kpi"><div class="v">${reales}</div><div class="k">Requerimientos</div><div class="d">${atendidas.length?(reales/atendidas.length).toFixed(1):"0"} por cliente</div></div>
+    <div class="kpi"><div class="v">${espProm} min</div><div class="k">Espera promedio</div></div>
+    <div class="kpi"><div class="v">${usd(totalRecaudado())}</div><div class="k">Recaudación</div><div class="d">${S.reqs.filter(r=>r.recibo).length} recibos</div></div>
+    <div class="kpi"><div class="v">${S.llamadas.length}</div><div class="k">Llamadas</div></div>
+    <div class="kpi"><div class="v ${S.reqs.filter(r=>r.motivo).length?"warn":"good"}">${S.reqs.filter(r=>r.motivo).length}</div><div class="k">Devoluciones</div></div>
+  </div>
+
+  <div class="panel">
+    <header><h4>Reporte 1 — Recepción</h4><span class="note">${S.visitas.length} turnos</span></header>
+    <table>
+      <thead><tr><th>Turno</th><th>Cliente</th><th>Canal</th><th>Llegada</th><th>Inicio</th><th class="num">Espera</th><th>Motivo</th></tr></thead>
+      <tbody>${S.visitas.map(v => `<tr><td class="mono">${v.token}</td><td>${esc(v.cliente)}</td>
+        <td class="sm">${esc(v.canal)}</td>
+        <td class="mono">${hhmm(v.tsLlegada)}</td><td class="mono">${hhmm(v.tsInicio)}</td>
+        <td class="num">${v.tsInicio?mins(v.tsLlegada,v.tsInicio):mins(v.tsLlegada,new Date())} min</td>
+        <td>${esc(v.motivo)}</td></tr>`).join("")}</tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <header><h4>Reporte 2 — Actividad por ejecutivo</h4></header>
+    <table>
+      <thead><tr><th>Ejecutivo</th><th class="num">Clientes</th><th class="num">Requerimientos</th><th class="num">Carga estándar</th><th class="num">Reqs./cliente</th><th class="num">Recaudado</th></tr></thead>
+      <tbody>${EJEC.map(e => { const p = porEj[e];
+        return `<tr><td>${e}</td><td class="num">${p.cli}</td><td class="num">${p.req}</td>
+        <td class="num">${(p.min/60).toFixed(1)} h</td><td class="num">${p.cli?(p.req/p.cli).toFixed(1):"—"}</td>
+        <td class="num">${usd(p.usd)}</td></tr>`; }).join("")}</tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <header><h4>Reporte 3 — Recaudación</h4></header>
+    <table>
+      <thead><tr><th>Responsable</th><th class="num">Transacciones</th><th class="num">Valor</th><th class="num">Participación</th></tr></thead>
+      <tbody>${RESP.map(k => { const m = esperadoCaja()[k]; const tot = totalRecaudado() || 1;
+        return `<tr><td>${k}</td><td class="num">${m.n}</td><td class="num">${usd(m.esp)}</td>
+        <td class="num">${(100*m.esp/tot).toFixed(1)}%</td></tr>`; }).join("")}</tbody>
+    </table>
+  </div>
+
+  <div class="split">
+    <div class="panel"><header><h4>Volumen por familia</h4></header><div class="body">
+      ${famList.map(([f,n]) => `<div class="bar-row"><span>${esc(f)}</span><span class="bar"><span style="width:${100*n/maxF}%"></span></span><span class="mono" style="text-align:right">${n}</span></div>`).join("")}
+    </div></div>
+    <div class="panel"><header><h4>Motivos de devolución</h4></header><div class="body">
+      ${parList.length ? parList.map(([c,n]) => `<div class="bar-row"><span title="${esc(c)}">${esc(c.length>26?c.slice(0,26)+"…":c)}</span><span class="bar alt"><span style="width:${100*n/maxC}%"></span></span><span class="mono" style="text-align:right">${n}</span></div>`).join("")
+        : `<p class="muted" style="margin:0">Sin devoluciones.</p>`}
+    </div></div>
+  </div>`;
+}
+
+function repMes(){
+  const hoyRow = { fecha:S.hoy, clientes:S.visitas.filter(v=>v.tsInicio).length,
+    reqs:S.reqs.filter(r=>r.visitaId).length, recaudado:totalRecaudado(),
+    observados:S.reqs.filter(r=>r.motivo).length, llamadas:S.llamadas.length,
+    valija:S.valija.length };
+  const dias = S.historico.concat([hoyRow]);
+  const sum = k => dias.reduce((a,d) => a + d[k], 0);
+  const maxR = Math.max.apply(null, dias.map(d => d.reqs));
+
+  return `
+  <div class="kpis">
+    <div class="kpi"><div class="v">${dias.length}</div><div class="k">Días operados</div></div>
+    <div class="kpi"><div class="v">${sum("clientes")}</div><div class="k">Clientes</div><div class="d">${(sum("clientes")/dias.length).toFixed(1)} por día</div></div>
+    <div class="kpi"><div class="v">${sum("reqs")}</div><div class="k">Requerimientos</div><div class="d">${(sum("reqs")/sum("clientes")).toFixed(1)} por cliente</div></div>
+    <div class="kpi"><div class="v">${usd(sum("recaudado"))}</div><div class="k">Recaudación</div></div>
+    <div class="kpi"><div class="v">${sum("llamadas")}</div><div class="k">Llamadas</div></div>
+    <div class="kpi"><div class="v ${sum("observados")?"warn":"good"}">${sum("observados")}</div><div class="k">Devoluciones</div></div>
+  </div>
+
+  <div class="panel">
+    <header><h4>Requerimientos por día</h4></header>
+    <div class="body">
+      ${dias.map(d => `<div class="bar-row"><span class="mono">${new Date(d.fecha).toLocaleDateString("es-EC",{day:"2-digit",month:"2-digit"})}</span>
+      <span class="bar"><span style="width:${100*d.reqs/maxR}%"></span></span>
+      <span class="mono" style="text-align:right">${d.reqs}</span></div>`).join("")}
+    </div>
+  </div>
+
+  <div class="panel">
+    <header><h4>Consolidado diario</h4><span class="note">${dias.length} días</span></header>
+    <table>
+      <thead><tr><th>Fecha</th><th class="num">Clientes</th><th class="num">Requerimientos</th><th class="num">Recaudado</th><th class="num">Llamadas</th><th class="num">Valija</th><th class="num">Devoluciones</th></tr></thead>
+      <tbody>${dias.map(d => `<tr>
+        <td class="mono">${new Date(d.fecha).toLocaleDateString("es-EC")}</td>
+        <td class="num">${d.clientes}</td><td class="num">${d.reqs}</td>
+        <td class="num">${usd(d.recaudado)}</td><td class="num">${d.llamadas}</td>
+        <td class="num">${d.valija}</td>
+        <td class="num">${d.observados || "—"}</td></tr>`).join("")}</tbody>
+      <tfoot><tr>
+        <td style="font-weight:600;border-top:1px solid var(--line)">Total</td>
+        <td class="num" style="border-top:1px solid var(--line)">${sum("clientes")}</td>
+        <td class="num" style="border-top:1px solid var(--line)">${sum("reqs")}</td>
+        <td class="num" style="font-weight:600;border-top:1px solid var(--line)">${usd(sum("recaudado"))}</td>
+        <td class="num" style="border-top:1px solid var(--line)">${sum("llamadas")}</td>
+        <td class="num" style="border-top:1px solid var(--line)">${sum("valija")}</td>
+        <td class="num" style="border-top:1px solid var(--line)">${sum("observados")}</td>
+      </tr></tfoot>
+    </table>
+  </div>`;
+}
+
+/* ---------------- Interacción ---------------- */
+function layer(html){
+  const l = document.getElementById("layer");
+  l.innerHTML = html;
+  l.querySelectorAll("[data-close]").forEach(x => x.onclick = e => { if (e.target === x) closeLayer(); });
+  bind(l);
+}
+function closeLayer(){ document.getElementById("layer").innerHTML = ""; }
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeLayer(); });
+
+function bind(root){
+  const R = root || document;
+  const on = (sel, fn) => R.querySelectorAll(sel).forEach(el => el.onclick = () => fn(el));
+
+  R.querySelectorAll("[data-per]").forEach(el => el.onclick = () => { periodo = el.dataset.per; render(); });
+
+  on("[data-atender]", el => {
+    const v = visita(el.dataset.atender);
+    v.estado = "EN_ATENCION"; v.tsInicio = new Date(); v.ejecutivo = EJEC[0];
+    const k = CAT.find(c => c.f === v.motivo) || CAT[4];
+    nuevoReq(v.id, k.c);
+    vista = "atencion"; render(); drawerVisita(v.id);
+  });
+
+  on("[data-abrir]", el => drawerVisita(el.dataset.abrir));
+  on("[data-req]",   el => drawerReq(el.dataset.req));
+
+  R.querySelectorAll("[data-form]").forEach(cb => cb.onchange = () => {
+    const [rid, i] = cb.dataset.form.split("|");
+    const r = S.reqs.find(x => x.id === rid);
+    r.forms[+i].ok = cb.checked;
+    drawerVisita(r.visitaId);
+  });
+
+  on("[data-add]", el => {
+    nuevoReq(el.dataset.add, document.getElementById("add-req").value);
+    render(); drawerVisita(el.dataset.add);
+  });
+
+  on("[data-firmar]", el => {
+    reqsDe(el.dataset.firmar).filter(r => r.estado === "BORRADOR" && formsOk(r)).forEach(r => {
+      r.estado = "FIRMADO"; ev(r, "Formularios completos; solicitud firmada por el cliente", "Cliente");
+    });
+    render(); drawerVisita(el.dataset.firmar);
+  });
+
+  on("[data-cobrar]", el => {
+    reqsDe(el.dataset.cobrar).filter(r => r.estado === "FIRMADO").forEach(r => {
+      seq.rec++; r.recibo = "RC-" + String(1200 + seq.rec); r.estado = "COBRADO";
+      ev(r, "Recibo " + r.recibo + " emitido por " + usd(r.tarifa), "Ejecutivo");
+    });
+    render(); drawerVisita(el.dataset.cobrar);
+  });
+
+  on("[data-enviar]", el => {
+    const v = visita(el.dataset.enviar);
+    const rs = reqsDe(v.id).filter(r => r.estado === "COBRADO");
+    rs.forEach(r => { r.estado = "ENVIADO"; r.tsEnviado = new Date(); ev(r, "Requerimiento enviado a matriz", "Ejecutivo"); });
+    v.estado = "ATENDIDA"; v.tsFin = new Date();
+    render();
+    const asunto = rs.map(r => `[REQ-${r.id}]`).join(" ");
+    layer(`<div class="modal-c" data-close><div class="modal" onclick="event.stopPropagation()">
+      <div class="dh"><div><h4>Correo enviado a matriz</h4></div><button class="x" data-close>&times;</button></div>
+      <div class="db"><div class="mailbox">Para: operaciones@matriz
+Asunto: ${asunto} ${esc(v.cliente)} — ${rs.length} requerimiento(s)
+
+Cliente: ${esc(v.cliente)} (${v.doc})
+Ejecutivo: ${esc(v.ejecutivo)}
+Recibido: ${hhmm(v.tsInicio)}
+
+${rs.map(r => `· ${r.id}  ${r.code}  ${cat(r.code).n}  ${usd(r.tarifa)}  recibo ${r.recibo}`).join("\n")}
+
+Adjuntos: ${rs.reduce((a,r)=>a+r.forms.length,0)} formularios firmados y soportes.
+Respuesta comprometida: ${SLA_H} horas.</div>
+      <div class="actions"><button class="btn" data-goseg>Ir a Seguimiento</button></div></div>
+    </div></div>`);
+    const g = document.querySelector("[data-goseg]");
+    if (g) g.onclick = () => { closeLayer(); vista = "seguimiento"; render(); };
+  });
+
+  on("[data-resp]", el => {
+    const [id, tipo] = el.dataset.resp.split("|");
+    const r = S.reqs.find(x => x.id === id);
+    r.tsRespuesta = new Date();
+    if (tipo === "ok"){
+      r.estado = "CERRADO";
+      ev(r, "Matriz responde: aprobado", "Operaciones matriz");
+      ev(r, "Requerimiento cerrado", "Sistema");
+      if (!r.entregadoA) r.entregadoA = cat(r.code).r;
+    } else {
+      r.motivo = MOTIVOS_OBS[Math.floor(Math.random() * MOTIVOS_OBS.length)];
+      r.estado = "OBSERVADO"; r.seguimiento = null;
+      ev(r, "Matriz responde: observado — " + r.motivo, "Operaciones matriz");
+    }
+    render();
+  });
+
+  on("[data-seguir]", el => {
+    const r = S.reqs.find(x => x.id === el.dataset.seguir);
+    const v = visita(r.visitaId);
+    r.seguimiento = new Date();
+    ev(r, "Llamada de seguimiento al cliente", "Ejecutivo");
+    S.llamadas.push({id:"L"+(S.llamadas.length+1), cliente: v ? v.cliente : "—",
+      motivo:"Seguimiento de observación", resultado:"Cliente contactado", ts:new Date(), ejecutivo:EJEC[0]});
+    render();
+  });
+
+  on("[data-reenviar]", el => {
+    const r = S.reqs.find(x => x.id === el.dataset.reenviar);
+    r.reenvios++; r.estado = "ENVIADO"; r.tsEnviado = new Date(); r.tsRespuesta = null; r.seguimiento = null;
+    ev(r, "Observación subsanada; reenviado a matriz (intento " + (r.reenvios + 1) + ")", "Ejecutivo");
+    render();
+  });
+
+  on("[data-entregar]", el => {
+    const k = el.dataset.entregar;
+    S.reqs.filter(r => r.recibo && cat(r.code).r === k && !r.arqueado).forEach(r => {
+      r.arqueado = true; r.entregadoA = k;
+      ev(r, "Efectivo entregado al responsable de " + k, "Ejecutivo");
+    });
+    render();
+  });
+
+  on("[data-llamar]", el => {
+    const x = S.valija.find(y => y.id === el.dataset.llamar);
+    x.estado = "NOTIFICADO"; x.tsLlamada = new Date();
+    S.llamadas.push({id:"L"+(S.llamadas.length+1), cliente:x.cliente, motivo:"Aviso de documento en oficina",
+      resultado:"Cliente contactado", ts:new Date(), ejecutivo:EJEC[0]});
+    render();
+  });
+
+  on("[data-entregado]", el => {
+    const x = S.valija.find(y => y.id === el.dataset.entregado);
+    x.estado = "ENTREGADO"; x.tsEntrega = new Date();
+    render();
+  });
+
+  const bt = R.querySelector("#b-turno");
+  if (bt) bt.onclick = () => {
+    const cli = document.getElementById("f-cli").value.trim();
+    if (!cli){ document.getElementById("f-cli").focus(); return; }
+    nuevaVisita(cli, document.getElementById("f-doc").value.trim() || "P-0000…",
+      document.getElementById("f-mot").value, document.getElementById("f-can").value);
+    render();
+  };
+
+  const bl = R.querySelector("#b-llamada");
+  if (bl) bl.onclick = () => {
+    const cli = document.getElementById("l-cli").value.trim();
+    if (!cli){ document.getElementById("l-cli").focus(); return; }
+    S.llamadas.push({id:"L"+(S.llamadas.length+1), cliente:cli,
+      motivo:document.getElementById("l-mot").value, resultado:document.getElementById("l-res").value,
+      ts:new Date(), ejecutivo:EJEC[0]});
+    render();
+  };
+
+  const bx = R.querySelector("#b-excel");
+  if (bx) bx.onclick = () => layer(`<div class="modal-c" data-close><div class="modal" onclick="event.stopPropagation()">
+    <div class="dh"><div><h4>Exportar a Excel</h4></div><button class="x" data-close>&times;</button></div>
+    <div class="db"><div class="mailbox">Origen: listas del sitio de operaciones
+Tablas: Visitas · Requerimientos · Cobros · Llamadas · Valija
+
+La tabla queda vinculada. Actualizar › Actualizar todo trae el dato del día.
+Tablas dinámicas y fórmulas existentes siguen funcionando sin cambios.</div></div>
+  </div></div>`);
+
+  const bp = R.querySelector("#b-pbi");
+  if (bp) bp.onclick = () => layer(`<div class="modal-c" data-close><div class="modal" onclick="event.stopPropagation()">
+    <div class="dh"><div><h4>Tablero</h4></div><button class="x" data-close>&times;</button></div>
+    <div class="db"><div class="mailbox">Acceso:      cuenta corporativa con doble factor
+Alcance:     supervisión, gerencia y cumplimiento
+Actualiza:   cada 2 horas en jornada y al cierre del día
+Contenido:   reportes diarios, consolidado mensual,
+             motivos de devolución y cumplimiento de tiempos</div></div>
+  </div></div>`);
+
+  const bg = R.querySelector("#b-guia");
+  if (bg) bg.onclick = () => {
+    const lista = S.reqs.filter(r => r.estado === "CERRADO" && cat(r.code).v);
+    layer(`<div class="modal-c" data-close><div class="modal" onclick="event.stopPropagation()">
+      <div class="dh"><div><h4>Guía de envío</h4></div><button class="x" data-close>&times;</button></div>
+      <div class="db"><div class="mailbox">Guía: VJ-OUT-${String(Date.now()).slice(-5)}
+Destino: matriz
+Piezas: ${lista.length}
+
+${lista.map(r => { const v = visita(r.visitaId); return `· ${r.id}  ${esc(v?v.cliente:"—")}  ${cat(r.code).n}`; }).join("\n")}</div></div>
+    </div></div>`);
+  };
+}
+
+render();
+setInterval(() => { if (["recepcion","seguimiento"].includes(vista) && !document.getElementById("layer").innerHTML) render(); }, 30000);
+</script>
+</body>
+</html>
